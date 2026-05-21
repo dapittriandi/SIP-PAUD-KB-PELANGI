@@ -12,9 +12,19 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class AbsensiController extends Controller
 {
-    // Jam kerja (fallback jika config/sekolah.php belum ada)
-    const JAM_MASUK     = '07:00';
-    const JAM_TERLAMBAT = '07:30';
+    // =========================================================================
+    // Konstanta Jam Kerja
+    // Jam masuk resmi       : 08:00
+    // Toleransi terlambat   : 15 menit → batas tetap hadir s/d 08:15
+    // Setelah 08:15         : status "terlambat", catat selisih dari 08:00
+    // Cut-off check-in      : 10:30 → setelah ini tidak bisa absen mandiri
+    // Cut-off lapor izin    : 09:00 → setelah ini tidak bisa lapor izin/sakit/tugas_luar
+    // =========================================================================
+    const JAM_MASUK          = '08:00';   // jam masuk resmi
+    const JAM_TOLERANSI      = '08:15';   // batas akhir masih dianggap "hadir"
+    const JAM_CUTOFF_CHECKIN = '10:30';   // setelah ini check-in mandiri ditutup
+    const JAM_MULAI_IZIN     = '00:01';
+    const JAM_CUTOFF_IZIN    = '09:00';   // setelah ini lapor izin/sakit/tugas_luar ditutup
 
     // =========================================================================
     // GURU — Halaman absensi self check-in
@@ -37,7 +47,10 @@ class AbsensiController extends Controller
                             ->orderByDesc('tanggal')
                             ->get();
 
-        return view('absensi.index', compact('user', 'absenHariIni', 'absenBulanIni'));
+        // Kirim info window waktu ke view agar bisa ditampilkan ke guru
+        $infoWaktu = $this->infoWindowWaktu();
+
+        return view('absensi.index', compact('user', 'absenHariIni', 'absenBulanIni', 'infoWaktu'));
     }
 
     /**
@@ -48,6 +61,7 @@ class AbsensiController extends Controller
         $user = Auth::user();
         abort_unless($user->isGuru(), 403);
 
+        // ── 1. Cek sudah absen hari ini ─────────────────────────────────────
         if ($user->sudahAbsenHariIni()) {
             return response()->json([
                 'success' => false,
@@ -55,6 +69,18 @@ class AbsensiController extends Controller
             ], 422);
         }
 
+        // ── 2. Cek window waktu check-in ────────────────────────────────────
+        $sekarang      = now();
+        $cutoffCheckIn = today()->setTimeFromTimeString($this->getJamCutoffCheckIn());
+
+        if ($sekarang->greaterThan($cutoffCheckIn)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Batas waktu absensi mandiri sudah lewat (maks. pukul {$this->getJamCutoffCheckIn()}). Hubungi admin untuk pencatatan manual.",
+            ], 422);
+        }
+
+        // ── 3. Validasi koordinat GPS ────────────────────────────────────────
         $request->validate([
             'latitude'  => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
@@ -75,13 +101,15 @@ class AbsensiController extends Controller
             ], 422);
         }
 
-        $jamSekarang = now()->format('H:i');
+        // ── 4. Tentukan status & menit terlambat ─────────────────────────────
+        $jamSekarang = $sekarang->format('H:i');
         [$status, $terlambatMenit] = $this->tentukanStatus($jamSekarang);
 
+        // ── 5. Simpan ke database ────────────────────────────────────────────
         AbsensiGuru::create([
             'guru_id'         => $user->id,
             'tanggal'         => today(),
-            'jam_masuk'       => now()->format('H:i:s'),
+            'jam_masuk'       => $sekarang->format('H:i:s'),
             'status'          => $status,
             'terlambat_menit' => $terlambatMenit,
             'latitude'        => $lat,
@@ -91,17 +119,19 @@ class AbsensiController extends Controller
             'dicatat_oleh'    => null,
         ]);
 
+        // ── 6. Susun pesan balasan ────────────────────────────────────────────
         $pesan = match ($status) {
             'hadir'     => 'Absensi berhasil! Selamat bekerja.',
-            'terlambat' => "Absensi berhasil. Anda terlambat {$terlambatMenit} menit.",
+            'terlambat' => "Absensi berhasil dicatat. Anda terlambat {$terlambatMenit} menit dari jam masuk (" . $this->getJamMasuk() . ").",
             default     => 'Absensi berhasil dicatat.',
         };
 
         return response()->json([
-            'success'   => true,
-            'message'   => $pesan,
-            'status'    => $status,
-            'jam_masuk' => now()->format('H:i'),
+            'success'          => true,
+            'message'          => $pesan,
+            'status'           => $status,
+            'jam_masuk'        => $sekarang->format('H:i'),
+            'terlambat_menit'  => $terlambatMenit,
         ]);
     }
 
@@ -121,7 +151,9 @@ class AbsensiController extends Controller
                             ->whereDate('tanggal', today())
                             ->first();
 
-        return view('absensi.izin', compact('absenHariIni'));
+        $infoWaktu = $this->infoWindowWaktu();
+
+        return view('absensi.izin', compact('absenHariIni', 'infoWaktu'));
     }
 
     /**
@@ -132,12 +164,27 @@ class AbsensiController extends Controller
         $user = Auth::user();
         abort_unless($user->isGuru(), 403);
 
-        // Kalau sudah absen hari ini, tolak
+        // ── 1. Cek sudah absen hari ini ─────────────────────────────────────
         if (AbsensiGuru::where('guru_id', $user->id)->whereDate('tanggal', today())->exists()) {
             return redirect()->route('absensi.izin.form')
                 ->with('error', 'Anda sudah memiliki catatan absensi hari ini.');
         }
 
+        $sekarang  = now();
+        $jamMulai  = today()->setTimeFromTimeString($this->getJamMulaiIzin());
+        $jamCutoff = today()->setTimeFromTimeString($this->getJamCutoffIzin());
+
+        if ($sekarang->lessThan($jamMulai)) {
+            return redirect()->route('absensi.izin.form')
+                ->with('error', "Laporan izin hanya bisa dikirim mulai pukul {$this->getJamMulaiIzin()}.");
+        }
+
+        if ($sekarang->greaterThan($jamCutoff)) {
+            return redirect()->route('absensi.izin.form')
+                ->with('error', "Batas waktu laporan izin/sakit/tugas luar adalah pukul {$this->getJamCutoffIzin()}. Silakan hubungi admin untuk pencatatan manual.");
+        }
+
+        // ── 3. Validasi input ────────────────────────────────────────────────
         $request->validate([
             'status'     => 'required|in:izin,sakit,tugas_luar',
             'keterangan' => 'required|string|min:5|max:500',
@@ -149,6 +196,7 @@ class AbsensiController extends Controller
             'keterangan.max'      => 'Keterangan maksimal 500 karakter.',
         ]);
 
+        // ── 4. Simpan ke database ────────────────────────────────────────────
         AbsensiGuru::create([
             'guru_id'      => $user->id,
             'tanggal'      => today(),
@@ -190,6 +238,7 @@ class AbsensiController extends Controller
 
     /**
      * Admin input / update absensi satu guru
+     * (Admin tidak dibatasi oleh jam — bisa input kapan saja, termasuk hari lalu)
      */
     public function simpanManual(Request $request)
     {
@@ -279,7 +328,7 @@ class AbsensiController extends Controller
     }
 
     // =========================================================================
-    // LAPORAN — view HTML (untuk ditampilkan di browser)
+    // LAPORAN — view HTML
     // =========================================================================
 
     public function laporan(Request $request)
@@ -318,11 +367,19 @@ class AbsensiController extends Controller
             ];
         });
 
-        return view('absensi.laporan', compact('rekap', 'bulan', 'tahun', 'hariKerja'));
+        // ── Ringkasan — FIX: variabel ini wajib dikirim ke view ──────────────
+        $ringkasan = [
+            'total_guru'      => $guruAktif->count(),
+            'rata_hadir'      => $rekap->count() > 0 ? round($rekap->avg('hadir'), 1) : 0,
+            'rata_alpha'      => $rekap->count() > 0 ? round($rekap->avg('alpha'), 1) : 0,
+            'rata_persentase' => $rekap->count() > 0 ? round($rekap->avg('persentase'), 1) : 0,
+        ];
+
+        return view('absensi.laporan', compact('rekap', 'bulan', 'tahun', 'hariKerja', 'ringkasan'));
     }
 
     // =========================================================================
-    // CETAK PDF — laporan lengkap per tanggal (untuk DomPDF)
+    // CETAK PDF
     // =========================================================================
 
     public function cetakLaporan(Request $request)
@@ -394,15 +451,15 @@ class AbsensiController extends Controller
     // =========================================================================
 
     /**
-     * Tentukan status (hadir/terlambat) dan menit terlambat dari jam masuk.
+     * Tentukan status (hadir/terlambat) dan menit terlambat.
      */
     private function tentukanStatus(string $jam): array
     {
-        $jamMasuk    = config('sekolah.jam_masuk', self::JAM_MASUK);
-        $jamTerlambat = config('sekolah.jam_terlambat', self::JAM_TERLAMBAT);
+        $jamMasuk    = $this->getJamMasuk();
+        $jamTolerasi = $this->getJamTolerasi();
 
-        $waktu      = Carbon::createFromFormat('H:i', $jam);
-        $batasHadir = Carbon::createFromFormat('H:i', $jamTerlambat);
+        $waktu       = Carbon::createFromFormat('H:i', $jam);
+        $batasHadir  = Carbon::createFromFormat('H:i', $jamTolerasi);
 
         if ($waktu->lessThanOrEqualTo($batasHadir)) {
             return ['hadir', 0];
@@ -415,11 +472,11 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Hitung menit terlambat dari jam string (H:i).
+     * Hitung menit terlambat dari jam string (H:i) — digunakan input manual admin.
      */
     private function hitungTerlambat(string $jam): int
     {
-        $jamMasuk = config('sekolah.jam_masuk', self::JAM_MASUK);
+        $jamMasuk = $this->getJamMasuk();
         $waktu    = Carbon::createFromFormat('H:i', $jam);
         $normal   = Carbon::createFromFormat('H:i', $jamMasuk);
 
@@ -443,5 +500,46 @@ class AbsensiController extends Controller
         }
 
         return $hari;
+    }
+
+    /**
+     * Kembalikan array info window waktu untuk dikirim ke view.
+     */
+    private function infoWindowWaktu(): array
+    {
+        return [
+            'jam_masuk'          => $this->getJamMasuk(),
+            'jam_toleransi'      => $this->getJamTolerasi(),
+            'jam_cutoff_checkin' => $this->getJamCutoffCheckIn(),
+            'jam_mulai_izin'     => $this->getJamMulaiIzin(),
+            'jam_cutoff_izin'    => $this->getJamCutoffIzin(),
+        ];
+    }
+
+    // ── Getter jam (config > konstanta) ──────────────────────────────────────
+
+    private function getJamMasuk(): string
+    {
+        return config('sekolah.jam_masuk', self::JAM_MASUK);
+    }
+
+    private function getJamTolerasi(): string
+    {
+        return config('sekolah.jam_toleransi', self::JAM_TOLERANSI);
+    }
+
+    private function getJamCutoffCheckIn(): string
+    {
+        return config('sekolah.jam_cutoff_checkin', self::JAM_CUTOFF_CHECKIN);
+    }
+
+    private function getJamMulaiIzin(): string
+    {
+        return config('sekolah.jam_mulai_izin', self::JAM_MULAI_IZIN);
+    }
+
+    private function getJamCutoffIzin(): string
+    {
+        return config('sekolah.jam_cutoff_izin', self::JAM_CUTOFF_IZIN);
     }
 }

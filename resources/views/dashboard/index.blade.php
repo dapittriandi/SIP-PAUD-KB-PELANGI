@@ -953,7 +953,7 @@
         <span class="db-qb-sub">Catat pembayaran</span>
         <span class="db-qb-arrow">→</span>
     </a>
-    <a href="{{ route('laporan.absensi') }}" class="db-quick-btn db-anim d5">
+    <a href="{{ route('absensi.laporan') }}" class="db-quick-btn db-anim d5">
         <div class="db-qb-icon i-violet">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/></svg>
         </div>
@@ -961,7 +961,7 @@
         <span class="db-qb-sub">Lihat & cetak PDF</span>
         <span class="db-qb-arrow">→</span>
     </a>
-    <a href="{{ route('laporan.spp') }}" class="db-quick-btn db-anim d6">
+    <a href="{{ route('spp.laporan') }}" class="db-quick-btn db-anim d6">
         <div class="db-qb-icon i-rose">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
         </div>
@@ -980,7 +980,7 @@
         <div class="db-chart-head">
             <span class="db-chart-title">Absensi Guru</span>
             <div class="db-chart-tabs">
-                <button class="db-ctab on" id="tab-bulan" onclick="switchAbsen('bulan')">5 Bulan</button>
+                <button class="db-ctab on" id="tab-bulan" onclick="switchAbsen('bulan')">6 Bulan</button>
                 <button class="db-ctab" id="tab-minggu" onclick="switchAbsen('minggu')">Minggu Ini</button>
             </div>
         </div>
@@ -1048,6 +1048,9 @@
         </div>
         <div style="position:relative;width:100%;height:168px;">
             <canvas id="chartSPP" role="img" aria-label="Grafik SPP 6 bulan"></canvas>
+            <div id="chartSPP-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-3);font-family:var(--db-font-mono);">
+                Memuat data...
+            </div>
         </div>
         <div class="db-legend">
             <span class="db-ld"><span class="db-ld-sq" style="background:#6366f1;"></span>Terbayar</span>
@@ -1180,7 +1183,7 @@
         <p class="db-income-label">Total Pemasukan SPP Bulan Ini</p>
         <p class="db-income-amount">Rp <span class="counter-rp" data-target="{{ $data['total_pemasukan'] ?? 0 }}">0</span></p>
         @php
-            $targetBenda = $data['total_siswa'] * 150000;
+            $targetBenda = ($data['total_siswa'] ?? 0) * 150000;
             $pctBenda = $targetBenda > 0 ? round(($data['total_pemasukan'] ?? 0) / $targetBenda * 100) : 0;
         @endphp
         <p class="db-income-sub">Estimasi target: Rp {{ number_format($targetBenda, 0, ',', '.') }}</p>
@@ -1373,7 +1376,7 @@
         <div class="db-chart-head">
             <span class="db-chart-title">Tren Absensi Guru</span>
             <div class="db-chart-tabs">
-                <button class="db-ctab on" id="tab-bulan-ks" onclick="switchAbsenKs('bulan')">5 Bulan</button>
+                <button class="db-ctab on" id="tab-bulan-ks" onclick="switchAbsenKs('bulan')">6 Bulan</button>
                 <button class="db-ctab" id="tab-minggu-ks" onclick="switchAbsenKs('minggu')">Minggu Ini</button>
             </div>
         </div>
@@ -1391,7 +1394,7 @@
 {{-- Quick links Kepsek --}}
 <div class="db-section-label db-anim d3"><span>akses laporan</span></div>
 <div class="db-quick-grid">
-    <a href="{{ route('laporan.absensi') }}" class="db-quick-btn db-anim d1">
+    <a href="{{ route('absensi.laporan') }}" class="db-quick-btn db-anim d1">
         <div class="db-qb-icon i-indigo">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/></svg>
         </div>
@@ -1596,7 +1599,7 @@
 
     // Admin income bar
     const totalPemasukan = {{ $data['total_pemasukan'] ?? 0 }};
-    const targetPemasukan = {{ $data['target_pemasukan'] ?? ($data['total_siswa'] * 150000) }};
+    const targetPemasukan = {{ $data['target_pemasukan'] ?? (($data['total_siswa'] ?? 0) * 150000) }};
     initProgressBar('income-bar', 'income-pct', totalPemasukan, targetPemasukan);
 
     // Bendahara income bar
@@ -1647,75 +1650,111 @@
         });
     }
 
-    /* ── Absensi data (placeholder — replace with real AJAX/server data) ── */
-    const absenData = {
-        bulan:  { labels:['Jan','Feb','Mar','Apr','Mei'], hadir:[10,11,10,9,9], izin:[1,1,2,2,1], alpha:[1,0,0,1,2] },
-        minggu: { labels:['Sen','Sel','Rab','Kam','Jum'], hadir:[10,11,10,12,9], izin:[1,0,2,0,2], alpha:[1,1,0,0,1] }
-    };
-    let absenChart = null;
+    /* ── Absensi data — fetch real dari server ── */
+const absenCache = {};   // cache agar tidak re-fetch saat toggle
+let absenChart   = null;
 
-    function buildAbsen(period, chartId, tabBulan, tabMinggu) {
-        const d = absenData[period];
-        const datasets = [
-            { label:'Hadir',  data:d.hadir,  backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false },
-            { label:'Izin',   data:d.izin,   backgroundColor:'rgba(245,158,11,.78)', borderRadius:6, borderSkipped:false },
-            { label:'Alpha',  data:d.alpha,  backgroundColor:'rgba(244,63,94,.78)',  borderRadius:6, borderSkipped:false },
-        ];
-        const ctx = document.getElementById(chartId);
-        if (!ctx) return null;
-        if (absenChart) absenChart.destroy();
-        absenChart = buildBarChart(chartId, datasets, d.labels);
-        return absenChart;
-    }
+async function fetchAbsenData(period) {
+    if (absenCache[period]) return absenCache[period];
+
+    const url = `{{ route('dashboard.chart-absensi') }}?period=${period}`;
+    const res = await fetch(url, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+
+    if (!res.ok) throw new Error('Gagal memuat data chart');
+    const data = await res.json();
+    absenCache[period] = data;
+    return data;
+}
+
+   async function buildAbsen(period, chartId) {
+    const d = await fetchAbsenData(period);
+
+    const datasets = [
+        { label:'Hadir', data:d.hadir, backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false },
+        { label:'Izin',  data:d.izin,  backgroundColor:'rgba(245,158,11,.78)', borderRadius:6, borderSkipped:false },
+        { label:'Alpha', data:d.alpha, backgroundColor:'rgba(244,63,94,.78)',  borderRadius:6, borderSkipped:false },
+    ];
+    const ctx = document.getElementById(chartId);
+    if (!ctx) return null;
+    if (absenChart) absenChart.destroy();
+    absenChart = buildBarChart(chartId, datasets, d.labels);
+    return absenChart;
+}
 
     // Admin chart
-    if (document.getElementById('chartAbsen')) buildAbsen('bulan', 'chartAbsen', 'tab-bulan', 'tab-minggu');
-    // Kepsek chart
-    if (document.getElementById('chartAbsenKs')) {
-        let ksChart = null;
-        const origBuild = buildAbsen;
-        window.switchAbsenKs = function(period) {
-            document.getElementById('tab-bulan-ks')?.classList.toggle('on', period==='bulan');
-            document.getElementById('tab-minggu-ks')?.classList.toggle('on', period==='minggu');
-            const d = absenData[period];
-            const ctx = document.getElementById('chartAbsenKs');
-            if (!ctx) return;
-            if (ksChart) ksChart.destroy();
-            const c = cColors();
-            ksChart = new Chart(ctx, {
-                type:'bar',
-                data:{ labels:d.labels, datasets:[
-                    { label:'Hadir',  data:d.hadir,  backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false },
-                    { label:'Izin',   data:d.izin,   backgroundColor:'rgba(245,158,11,.78)', borderRadius:6, borderSkipped:false },
-                    { label:'Alpha',  data:d.alpha,  backgroundColor:'rgba(244,63,94,.78)',  borderRadius:6, borderSkipped:false },
-                ]},
-                options:{
-                    responsive:true, maintainAspectRatio:false,
-                    animation:{duration:700,easing:'easeOutQuart'},
-                    plugins:{ legend:{display:false}, tooltip:{mode:'index',intersect:false,...tooltipDefaults()} },
-                    scales:{
-                        x:{grid:{display:false},ticks:{font:{size:11},color:c.tick},border:{display:false}},
-                        y:{grid:{color:c.grid},ticks:{font:{size:11},color:c.tick,stepSize:2},border:{display:false}}
-                    }
-                }
-            });
-        };
-        window.switchAbsenKs('bulan');
-    }
+   // Admin chart
+if (document.getElementById('chartAbsen')) buildAbsen('bulan', 'chartAbsen');
 
+window.switchAbsen = function(period) {
+    document.getElementById('tab-bulan')?.classList.toggle('on', period === 'bulan');
+    document.getElementById('tab-minggu')?.classList.toggle('on', period === 'minggu');
+    buildAbsen(period, 'chartAbsen');
+};
+    // Kepsek chart
+   if (document.getElementById('chartAbsenKs')) {
+    let ksChart = null;
+
+    window.switchAbsenKs = async function(period) {
+        document.getElementById('tab-bulan-ks')?.classList.toggle('on', period === 'bulan');
+        document.getElementById('tab-minggu-ks')?.classList.toggle('on', period === 'minggu');
+
+        const d = await fetchAbsenData(period);   // pakai cache yang sama
+        const ctx = document.getElementById('chartAbsenKs');
+        if (!ctx) return;
+        if (ksChart) ksChart.destroy();
+
+        const c = cColors();
+        ksChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: d.labels,
+                datasets: [
+                    { label:'Hadir', data:d.hadir, backgroundColor:'rgba(16,185,129,.85)', borderRadius:6, borderSkipped:false },
+                    { label:'Izin',  data:d.izin,  backgroundColor:'rgba(245,158,11,.78)', borderRadius:6, borderSkipped:false },
+                    { label:'Alpha', data:d.alpha, backgroundColor:'rgba(244,63,94,.78)',  borderRadius:6, borderSkipped:false },
+                ]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                animation: { duration:700, easing:'easeOutQuart' },
+                plugins: { legend:{ display:false }, tooltip:{ mode:'index', intersect:false, ...tooltipDefaults() } },
+                scales: {
+                    x: { grid:{display:false}, ticks:{font:{size:11},color:c.tick}, border:{display:false} },
+                    y: { grid:{color:c.grid},  ticks:{font:{size:11},color:c.tick, stepSize:2}, border:{display:false} }
+                }
+            }
+        });
+    };
+
+    window.switchAbsenKs('bulan');
+}
     window.switchAbsen = function(period) {
         document.getElementById('tab-bulan')?.classList.toggle('on', period==='bulan');
         document.getElementById('tab-minggu')?.classList.toggle('on', period==='minggu');
         buildAbsen(period, 'chartAbsen');
     };
 
-    /* ── SPP Bar chart ── */
+    /* ── SPP Bar chart — fetch real dari server ── */
     const sppCtx = document.getElementById('chartSPP');
     if (sppCtx) {
-        buildBarChart('chartSPP', [
-            { label:'Terbayar',  data:[{{ $data['spp_bulan_ini'] }},{{ $data['spp_bulan_ini'] }},{{ $data['spp_bulan_ini'] }},{{ $data['spp_bulan_ini'] }},{{ $data['spp_bulan_ini'] }},{{ $data['spp_bulan_ini'] }}], backgroundColor:'rgba(99,102,241,.85)', borderRadius:6, borderSkipped:false },
-            { label:'Tunggakan', data:[{{ $data['tunggakan_spp'] }},{{ $data['tunggakan_spp'] }},{{ $data['tunggakan_spp'] }},{{ $data['tunggakan_spp'] }},{{ $data['tunggakan_spp'] }},{{ $data['tunggakan_spp'] }}], backgroundColor:'rgba(244,63,94,.50)', borderRadius:6, borderSkipped:false },
-        ], ['Des','Jan','Feb','Mar','Apr','Mei']);
+        fetch(`{{ route('dashboard.chart-spp') }}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(d => {
+            const loading = document.getElementById('chartSPP-loading');
+            if (loading) loading.style.display = 'none';
+            buildBarChart('chartSPP', [
+                { label:'Terbayar',  data: d.terbayar,  backgroundColor:'rgba(99,102,241,.85)', borderRadius:6, borderSkipped:false },
+                { label:'Tunggakan', data: d.tunggakan, backgroundColor:'rgba(244,63,94,.50)',  borderRadius:6, borderSkipped:false },
+            ], d.labels);
+        })
+        .catch(() => {
+            const loading = document.getElementById('chartSPP-loading');
+            if (loading) loading.textContent = 'Gagal memuat data.';
+        });
     }
 
     /* ── Donut charts ── */

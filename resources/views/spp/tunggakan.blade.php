@@ -308,12 +308,24 @@
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         <div>
-            <p class="ib-title">Tagihan SPP per siswa</p>
-            <p class="ib-body">
-                SPP Bulanan <strong>Rp 50.000</strong>
-                &nbsp;+&nbsp; Biaya Kebersihan <strong>Rp 5.000</strong>
-                &nbsp;=&nbsp; Total <strong>Rp 55.000</strong>
+            <p class="ib-title">
+                Tagihan SPP per siswa
+                @if($tarifSpp)
+                    &mdash; Tarif Tahun {{ $tarifSpp->tahun_berlaku }}
+                @endif
             </p>
+            @if($tarifSpp)
+            <p class="ib-body">
+                SPP Bulanan <strong>Rp {{ number_format($tarifSpp->nominal_spp, 0, ',', '.') }}</strong>
+                &nbsp;+&nbsp; Biaya Kebersihan <strong>Rp {{ number_format($tarifSpp->nominal_kebersihan, 0, ',', '.') }}</strong>
+                &nbsp;=&nbsp; Total <strong>Rp {{ number_format($tarifSpp->nominal_spp + $tarifSpp->nominal_kebersihan, 0, ',', '.') }}</strong>
+            </p>
+            @else
+            <p class="ib-body" style="color:#b45309">
+                Tarif SPP untuk tahun {{ $tahun }} belum diatur.
+                <a href="{{ route('spp.tarif.index') }}" style="color:#92400e; font-weight:700; text-decoration:underline;">Atur sekarang →</a>
+            </p>
+            @endif
         </div>
     </div>
 

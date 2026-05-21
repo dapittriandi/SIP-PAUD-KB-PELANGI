@@ -215,6 +215,7 @@
         .row-mid {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             margin-bottom: 20px;
         }
         .chk-label {
@@ -227,6 +228,28 @@
             user-select: none;
         }
         .chk-label input { accent-color: #3b82f6; cursor: pointer; }
+
+        .forgot-link {
+            font-size: 13px;
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color .13s;
+        }
+        .forgot-link:hover { color: #2563eb; text-decoration: underline; }
+
+        .alert-success {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 14px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 9px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #15803d;
+        }
 
         .btn-submit {
             width: 100%;
@@ -383,6 +406,15 @@
             </div>
             @endif
 
+            @if(session('status'))
+            <div class="alert-success" role="alert">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                {{ session('status') }}
+            </div>
+            @endif
+
             <form method="POST" action="{{ route('login.post') }}" @submit="loading = true">
                 @csrf
 
@@ -428,6 +460,9 @@
                         <input type="checkbox" name="remember">
                         Ingat saya
                     </label>
+                    <a href="{{ route('password.request') }}" class="forgot-link">
+                        Lupa password?
+                    </a>
                 </div>
 
                 <button type="submit" class="btn-submit" :class="{ 'is-loading': loading }">

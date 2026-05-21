@@ -7,7 +7,10 @@ use App\Http\Controllers\SiswaController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\SppController;
+use App\Http\Controllers\TarifSppController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +23,10 @@ Route::middleware('guest')->group(function () {
 
     Route::get('/login/guru',  [AuthController::class, 'showPinLogin'])->name('login.guru');
     Route::post('/login/guru', [AuthController::class, 'pinLogin'])->name('login.guru.post');
+    Route::get('/lupa-password',   [ForgotPasswordController::class, 'showForm'])->name('password.request');
+Route::post('/lupa-password',  [ForgotPasswordController::class, 'sendResetLink'])->name('password.email');
+Route::get('/reset-password/{token}',  [ForgotPasswordController::class, 'showReset'])->name('password.reset');
+Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 });
 
 /*
@@ -37,6 +44,16 @@ Route::post('/logout', [AuthController::class, 'logout'])
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
+     Route::get('/profile',           [ProfileController::class, 'edit'])       ->name('profile.edit');
+    Route::post('/profile',          [ProfileController::class, 'update'])     ->name('profile.update');
+    Route::delete('/profile/foto',   [ProfileController::class, 'hapusFoto']) ->name('profile.foto.hapus');
+    Route::post('/profile/password', [ProfileController::class, 'gantiPassword'])->name('profile.password');
+ 
+    // Admin reset password user lain
+    Route::post('/admin/users/{user}/reset-password',
+        [ProfileController::class, 'adminResetPassword'])
+        ->name('admin.user.reset-password')
+        ->middleware('role:admin');
 
     Route::get('/', fn() => redirect()->route('dashboard'));
 
@@ -49,18 +66,44 @@ Route::middleware(['auth'])->group(function () {
         ->name('dashboard')
         ->middleware('role:admin,bendahara,kepala_sekolah,guru');
 
+    Route::get('/dashboard/chart-absensi', [DashboardController::class, 'chartAbsensi'])
+    ->name('dashboard.chart-absensi')
+    ->middleware('role:admin,kepala_sekolah');
+
+    Route::get('/dashboard/chart-spp', [DashboardController::class, 'chartSpp'])
+    ->name('dashboard.chart-spp')
+    ->middleware('role:admin,bendahara,kepala_sekolah');
+
     /*
     |----------------------------------------------------------------------
     | SISWA
-    | Aturan: spesifik (/create) WAJIB di atas wildcard {siswa}
+    |
+    | PENTING: Route spesifik (/siswa/import, /siswa/create, dll) HARUS
+    |          didaftarkan SEBELUM wildcard {siswa} agar Laravel tidak
+    |          menganggap "import" atau "create" sebagai parameter model.
     |----------------------------------------------------------------------
     */
     Route::middleware('role:admin')->group(function () {
+        // ── Input manual ──
         Route::get('/siswa/create',       [SiswaController::class, 'create'])->name('siswa.create');
         Route::post('/siswa',             [SiswaController::class, 'store'])->name('siswa.store');
         Route::get('/siswa/{siswa}/edit', [SiswaController::class, 'edit'])->name('siswa.edit');
         Route::put('/siswa/{siswa}',      [SiswaController::class, 'update'])->name('siswa.update');
         Route::delete('/siswa/{siswa}',   [SiswaController::class, 'destroy'])->name('siswa.destroy');
+
+        // ── Kelola status siswa (keluar / aktifkan kembali) ──
+        // POST /siswa/{siswa}/keluarkan → nonaktifkan dengan tanggal & keterangan resmi
+        // POST /siswa/{siswa}/aktifkan  → aktifkan kembali siswa yang nonaktif
+        Route::post('/siswa/{siswa}/keluarkan', [SiswaController::class, 'keluarkan'])->name('siswa.keluarkan');
+        Route::post('/siswa/{siswa}/aktifkan',  [SiswaController::class, 'aktifkan']) ->name('siswa.aktifkan');
+
+        // ── Import Excel ──
+        // GET  /siswa/import          → form halaman import
+        // POST /siswa/import          → proses upload & simpan data
+        // GET  /siswa/import/template → download file template .xlsx
+        Route::get('/siswa/import',          [SiswaController::class, 'importForm'])      ->name('siswa.import.form');
+        Route::post('/siswa/import',         [SiswaController::class, 'import'])          ->name('siswa.import');
+        Route::get('/siswa/import/template', [SiswaController::class, 'downloadTemplate'])->name('siswa.import.template');
     });
 
     Route::middleware('role:admin,bendahara,kepala_sekolah')->group(function () {
@@ -71,7 +114,6 @@ Route::middleware(['auth'])->group(function () {
     /*
     |----------------------------------------------------------------------
     | GURU
-    | Aturan: spesifik (/create, /reset-pin, /toggle) di atas {guru}
     |----------------------------------------------------------------------
     */
     Route::middleware('role:admin')->group(function () {
@@ -92,23 +134,9 @@ Route::middleware(['auth'])->group(function () {
     /*
     |----------------------------------------------------------------------
     | ABSENSI
-    | Aturan: semua route spesifik (/kelola, /laporan, /manual, dll)
-    |         WAJIB di atas route dengan parameter {absensi}
-    |
-    | Method controller → nama route
-    | checkIn       → absensi.checkin          POST
-    | formIzin      → absensi.izin.form        GET   (guru input izin/sakit/tugas mandiri)
-    | storeIzin     → absensi.izin.store       POST
-    | kelola        → absensi.kelola           GET
-    | simpanManual  → absensi.manual           POST
-    | autoAlpha     → absensi.auto-alpha       POST
-    | hapus         → absensi.hapus            DELETE
-    | laporan       → absensi.laporan          GET   (view HTML)
-    | cetakLaporan  → absensi.cetak-laporan    GET   (stream PDF)
     |----------------------------------------------------------------------
     */
 
-    // Guru: self check-in + izin mandiri
     Route::middleware('role:guru')->group(function () {
         Route::get('/absensi',           [AbsensiController::class, 'index'])->name('absensi.index');
         Route::post('/absensi/check-in', [AbsensiController::class, 'checkIn'])->name('absensi.checkin');
@@ -116,7 +144,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/absensi/izin',     [AbsensiController::class, 'storeIzin'])->name('absensi.izin.store');
     });
 
-    // Admin: kelola, input manual, auto-alpha, hapus
     Route::middleware('role:admin')->group(function () {
         Route::get('/absensi/kelola',             [AbsensiController::class, 'kelola'])->name('absensi.kelola');
         Route::post('/absensi/manual',            [AbsensiController::class, 'simpanManual'])->name('absensi.manual');
@@ -124,55 +151,61 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/absensi/{absensi}/hapus', [AbsensiController::class, 'hapus'])->name('absensi.hapus');
     });
 
-    // Admin & Kepsek: laporan HTML + cetak PDF
+    /*
+    |----------------------------------------------------------------------
+    | LAPORAN ABSENSI
+    |----------------------------------------------------------------------
+    */
     Route::middleware('role:admin,kepala_sekolah')->group(function () {
-        Route::get('/absensi/laporan',       [AbsensiController::class, 'laporan'])->name('absensi.laporan');
-        Route::get('/absensi/cetak-laporan', [AbsensiController::class, 'cetakLaporan'])->name('absensi.cetak-laporan');
+        Route::get('/laporan/absensi',
+            [LaporanController::class, 'absensi'])
+            ->name('absensi.laporan');
+
+        Route::get('/laporan/absensi/cetak',
+            [LaporanController::class, 'cetakAbsensi'])
+            ->name('absensi.cetak-laporan');
     });
 
     /*
     |----------------------------------------------------------------------
     | SPP
-    | Aturan: spesifik (/input, /tunggakan, /laporan) di atas {spp}
-    |
-    | Method controller → nama route
-    | create       → spp.create    GET
-    | store        → spp.store     POST
-    | destroy      → spp.destroy   DELETE
-    | index        → spp.index     GET
-    | tunggakan    → spp.tunggakan GET
-    | laporan      → spp.laporan   GET
-    | kwitansi     → spp.kwitansi  GET  (view HTML kwitansi)
-    | cetakKwitansi → spp.cetak    GET  (stream PDF kwitansi)
     |----------------------------------------------------------------------
     */
 
-    // Admin & Bendahara: input + hapus
     Route::middleware('role:admin,bendahara')->group(function () {
-        Route::get('/spp/input',    [SppController::class, 'create'])->name('spp.create');
-        Route::post('/spp',         [SppController::class, 'store'])->name('spp.store');
+        Route::get('/spp/konfirmasi',         [SppController::class, 'konfirmasi'])->name('spp.konfirmasi');
+        Route::post('/spp/konfirmasi/satu',   [SppController::class, 'konfirmasiSatu'])->name('spp.konfirmasi.satu');
+        Route::post('/spp/konfirmasi/massal', [SppController::class, 'konfirmasiMassal'])->name('spp.konfirmasi.massal');
+
+        Route::get('/spp/input', [SppController::class, 'create'])->name('spp.create');
+        Route::post('/spp',      [SppController::class, 'store'])->name('spp.store');
+
         Route::delete('/spp/{spp}', [SppController::class, 'destroy'])->name('spp.destroy');
     });
 
-    // Admin, Bendahara, Kepsek: lihat semua data SPP
-    // Aturan: /tunggakan dan /laporan di atas {spp}
+    Route::middleware('role:admin,bendahara')->group(function () {
+        Route::get('/spp/tarif',            [TarifSppController::class, 'index'])  ->name('spp.tarif.index');
+        Route::post('/spp/tarif',           [TarifSppController::class, 'store'])  ->name('spp.tarif.store');
+        Route::put('/spp/tarif/{tarif}',    [TarifSppController::class, 'update']) ->name('spp.tarif.update');
+        Route::delete('/spp/tarif/{tarif}', [TarifSppController::class, 'destroy'])->name('spp.tarif.destroy');
+    });
+
     Route::middleware('role:admin,bendahara,kepala_sekolah')->group(function () {
-        Route::get('/spp',                 [SppController::class, 'index'])->name('spp.index');
-        Route::get('/spp/tunggakan',       [SppController::class, 'tunggakan'])->name('spp.tunggakan');
-        Route::get('/spp/laporan',         [SppController::class, 'laporan'])->name('spp.laporan');
-        Route::get('/spp/{spp}/kwitansi',  [SppController::class, 'kwitansi'])->name('spp.kwitansi');
-        Route::get('/spp/{spp}/cetak',     [SppController::class, 'cetakKwitansi'])->name('spp.cetak');
+        Route::get('/spp',                [SppController::class, 'index'])->name('spp.index');
+        Route::get('/spp/tunggakan',      [SppController::class, 'tunggakan'])->name('spp.tunggakan');
+        Route::get('/spp/laporan',        [SppController::class, 'laporan'])->name('spp.laporan');
+        Route::get('/spp/{spp}/kwitansi', [SppController::class, 'kwitansi'])->name('spp.kwitansi');
+        Route::get('/spp/{spp}/cetak',    [SppController::class, 'cetakKwitansi'])->name('spp.cetak');
     });
 
     /*
     |----------------------------------------------------------------------
-    | LAPORAN GABUNGAN (LaporanController)
-    | Terpisah dari AbsensiController — untuk rekap lintas modul
+    | LAPORAN GABUNGAN
     |----------------------------------------------------------------------
     */
-    Route::middleware('role:admin,kepala_sekolah')->group(function () {
-        Route::get('/laporan/absensi', [LaporanController::class, 'absensi'])->name('laporan.absensi');
-        Route::get('/laporan/spp',     [LaporanController::class, 'spp'])->name('laporan.spp');
+    Route::middleware('role:admin,kepala_sekolah,bendahara')->group(function () {
+        Route::get('/laporan/spp',       [LaporanController::class, 'spp'])      ->name('laporan.spp');
+        Route::get('/laporan/spp/cetak', [LaporanController::class, 'cetakSpp']) ->name('laporan.spp.cetak');
     });
 
 });
