@@ -88,6 +88,12 @@ class GuruSeeder extends Seeder
 
         foreach ($gurus as $g) {
             // Gunakan updateOrCreate agar tidak duplikat jika AdminSeeder sudah jalan
+             $existing = User::where('username', $g['username'])->first();
+    
+    // Jika sudah ada sebagai admin/kepsek/bendahara, skip
+    if ($existing && in_array($existing->role, ['admin', 'kepala_sekolah', 'bendahara'])) {
+        continue; // jangan timpa
+    }
             User::updateOrCreate(
                 ['username' => $g['username']],
                 [
