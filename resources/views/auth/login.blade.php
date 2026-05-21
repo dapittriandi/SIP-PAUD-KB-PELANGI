@@ -802,7 +802,7 @@ body {
                 PAUD
                 <span class="school-name-accent">KB Pelangi</span>
             </div>
-            <div class="school-place">Desa Pulau Pauh · Kec. Mestong · Muaro Jambi</div>
+            <div class="school-place">Desa Pulau Pauh · Kec. Renah Mendaluh · Tanjung Jabung Barat · Prov. Jambi</div>
 
             {{-- Role access chips --}}
             <div class="role-chips">
