@@ -27,7 +27,7 @@ class AdminSeeder extends Seeder
             'tanggal_lahir'      => '2000-12-04',
             'alamat'             => 'Pulau Pauh',
             'no_hp'              => '082269340000',
-            'status_kepegawaian' => 'guru honor sekolah',
+            'status_kepegawaian' => 'honorer',
             'jabatan'            => 'Operator Sistem',
             'pendidikan_terakhir'=> 'S1',
             'jurusan'            => null,
@@ -75,12 +75,11 @@ class AdminSeeder extends Seeder
             'tanggal_lahir'      => '1982-02-10',
             'alamat'             => 'Pulau Pauh',
             'no_hp'              => '085368190000',
-            'status_kepegawaian' => 'GTY/PTY',
+            'status_kepegawaian' => 'gtty',
             'jabatan'            => 'Bendahara',
             'pendidikan_terakhir'=> 'SMA',
             'jurusan'            => null,
             'tanggal_bergabung'  => '2017-01-09',
         ]);
-
     }
 }

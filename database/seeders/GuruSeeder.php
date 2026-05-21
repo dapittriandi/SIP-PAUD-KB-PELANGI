@@ -10,11 +10,6 @@ class GuruSeeder extends Seeder
 {
     public function run(): void
     {
-        // ── Guru KB Pelangi ───────────────────────────────────
-        // Semua staf berperan sebagai guru dalam operasional kelas.
-        // Role struktural (admin, bendahara, kepsek) diatur di AdminSeeder.
-        // PIN = 4 digit kode login di HP.
-
         $gurus = [
             [
                 'username'            => 'bella',
@@ -27,7 +22,7 @@ class GuruSeeder extends Seeder
                 'tanggal_lahir'       => '2000-12-04',
                 'alamat'              => 'Pulau Pauh',
                 'no_hp'               => '082269340000',
-                'status_kepegawaian'  => 'guru honor sekolah',
+                'status_kepegawaian'  => 'honorer',
                 'jabatan'             => 'Operator Sistem',
                 'pendidikan_terakhir' => 'S1',
                 'jurusan'             => null,
@@ -44,7 +39,7 @@ class GuruSeeder extends Seeder
                 'tanggal_lahir'       => null,
                 'alamat'              => 'Pulau Pauh',
                 'no_hp'               => '082282330000',
-                'status_kepegawaian'  => 'guru honor sekolah',
+                'status_kepegawaian'  => 'honorer',
                 'jabatan'             => 'Guru',
                 'pendidikan_terakhir' => 'S1',
                 'jurusan'             => 'PG PAUD',
@@ -61,7 +56,7 @@ class GuruSeeder extends Seeder
                 'tanggal_lahir'       => '1982-02-10',
                 'alamat'              => 'Pulau Pauh',
                 'no_hp'               => '085368190000',
-                'status_kepegawaian'  => 'GTY/PTY',
+                'status_kepegawaian'  => 'gtty',
                 'jabatan'             => 'Bendahara',
                 'pendidikan_terakhir' => 'SMA',
                 'jurusan'             => null,
@@ -87,17 +82,24 @@ class GuruSeeder extends Seeder
         ];
 
         foreach ($gurus as $g) {
-            // Gunakan updateOrCreate agar tidak duplikat jika AdminSeeder sudah jalan
-             $existing = User::where('username', $g['username'])->first();
-    
-    // Jika sudah ada sebagai admin/kepsek/bendahara, skip
-    if ($existing && in_array($existing->role, ['admin', 'kepala_sekolah', 'bendahara'])) {
-        continue; // jangan timpa
-    }
+            $existing = User::where('username', $g['username'])->first();
+
+            // Jika sudah ada sebagai admin/kepsek/bendahara, hanya update PIN saja
+            if ($existing && in_array($existing->role, ['admin', 'kepala_sekolah', 'bendahara'])) {
+                $existing->update([
+                    'pin' => Hash::make($g['pin']),
+                ]);
+                continue;
+            }
+
+            // Jika belum ada, buat sebagai guru
             User::updateOrCreate(
                 ['username' => $g['username']],
                 [
+                    'name'                => $g['nama_lengkap'],
+                    'email'               => null,
                     'password'            => Hash::make($g['pin']),
+                    'pin'                 => Hash::make($g['pin']),
                     'role'                => 'guru',
                     'aktif'               => true,
                     'nama_lengkap'        => $g['nama_lengkap'],
