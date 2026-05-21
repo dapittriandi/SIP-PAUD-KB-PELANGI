@@ -22,6 +22,7 @@ class User extends Authenticatable
         'aktif'             => 'boolean',
         'tanggal_lahir'     => 'date',
         'tanggal_bergabung' => 'date',
+        'roles'             => 'array',
     ];
 
     // ── Relasi ───────────────────────────────────────────────
@@ -42,7 +43,15 @@ class User extends Authenticatable
     public function isGuru(): bool          { return $this->role === 'guru'; }
     public function isBendahara(): bool     { return $this->role === 'bendahara'; }
     public function isKepalaSekolah(): bool { return $this->role === 'kepala_sekolah'; }
-
+    public function hasRole(string $role): bool
+{
+    $roles = $this->roles ?? [$this->role];
+    return in_array($role, $roles);
+}
+public function hasAnyRole(array $roles): bool
+{
+    return collect($roles)->contains(fn($role) => $this->hasRole($role));
+}
     // ── Helper Absensi ───────────────────────────────────────
 
     public function sudahAbsenHariIni(): bool
