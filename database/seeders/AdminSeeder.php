@@ -14,7 +14,7 @@ class AdminSeeder extends Seeder
         User::create([
             'name'               => 'Bella Kurnia Sari',
             'email'              => null,
-            'username'           => 'bella',
+            'username'           => 'bella123',
             'password'           => Hash::make('bella123'),
             'pin'                => Hash::make('2345'),
             'role'               => 'admin',
@@ -40,7 +40,7 @@ class AdminSeeder extends Seeder
         User::create([
             'name'               => 'Renti Putriyani',
             'email'              => null,
-            'username'           => 'kepsek',
+            'username'           => 'renti123',
             'password'           => Hash::make('renti123'),
             'pin'                => null,
             'role'               => 'kepala_sekolah',
@@ -66,7 +66,7 @@ class AdminSeeder extends Seeder
         User::create([
             'name'               => 'Nuriah',
             'email'              => null,
-            'username'           => 'bendahara',
+            'username'           => 'nuriah123',
             'password'           => Hash::make('nuriah123'),
             'pin'                => Hash::make('4567'),
             'role'               => 'bendahara',
