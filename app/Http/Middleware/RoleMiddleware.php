@@ -11,9 +11,6 @@ class RoleMiddleware
     /**
      * Handle an incoming request.
      * Contoh pemakaian di route: middleware('role:admin,bendahara')
-     *
-     * Mendukung multi-role: user bisa punya lebih dari 1 role
-     * yang disimpan di kolom `roles` sebagai JSON array.
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
@@ -31,17 +28,9 @@ class RoleMiddleware
                 ->withErrors(['msg' => 'Akun Anda telah dinonaktifkan. Hubungi administrator.']);
         }
 
-        // Cek apakah salah satu role user cocok dengan yang dibutuhkan
-        if (!empty($roles)) {
-            $userRoles = $user->roles ?? [$user->role];
-
-            $hasAccess = collect($roles)->contains(function ($role) use ($userRoles) {
-                return in_array($role, $userRoles);
-            });
-
-            if (!$hasAccess) {
-                abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk halaman ini.');
-            }
+        // Role tidak sesuai → 403
+        if (!empty($roles) && !in_array($user->role, $roles)) {
+            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk halaman ini.');
         }
 
         return $next($request);

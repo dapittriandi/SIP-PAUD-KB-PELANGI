@@ -76,12 +76,9 @@ class AuthController extends Controller
             'pin.digits'        => 'PIN harus 4 digit angka.',
         ]);
 
-       $user = User::where('username', $request->username)
-            ->where(function($q) {
-                $q->where('role', 'guru')
-                  ->orWhere('is_guru', true); // ← admin yang juga guru
-            })
-            ->first();
+        $user = User::where('username', $request->username)
+                    ->where('role', 'guru')
+                    ->first();
 
         if (!$user || !Hash::check($request->pin, $user->pin)) {
             return back()
