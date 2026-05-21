@@ -185,6 +185,11 @@
     font-size: var(--fs-sm);
     color: var(--text-3);
     margin-bottom: .75rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+    letter-spacing: .01em;
 }
 
 .hero-tags {
@@ -506,7 +511,7 @@
 /* ── Info baris (read-only detail) ── */
 .info-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px 16px;
     padding: 14px 16px;
     background: var(--bg);
@@ -514,6 +519,8 @@
     border-radius: var(--r);
     margin-bottom: 14px;
 }
+@media (max-width: 700px) { .info-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 440px) { .info-grid { grid-template-columns: 1fr; } }
 .info-item { display: flex; flex-direction: column; gap: 3px; }
 .info-key {
     font-size: var(--fs-2xs);
@@ -611,13 +618,22 @@
             <div class="hero-meta">
                 <div class="hero-name">{{ $user->nama_lengkap }}</div>
                 <div class="hero-sub">
-                    @{{ $user->username }}
-                    @if($user->jabatan) · {{ $user->jabatan }} @endif
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.55;flex-shrink:0"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                    {{ $user->username }}
                 </div>
                 <div class="hero-tags">
+                    @php
+                        $roleLabel = match($user->role) {
+                            'admin'          => 'Admin',
+                            'guru'           => 'Guru',
+                            'bendahara'      => 'Bendahara',
+                            'kepala_sekolah' => 'Kepala Sekolah',
+                            default          => ucwords(str_replace('_', ' ', $user->role)),
+                        };
+                    @endphp
                     <span class="tag tag-role">
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        {{ ucwords(str_replace('_', ' ', $user->role)) }}
+                        {{ $roleLabel }}
                     </span>
                     @if($user->aktif)
                         <span class="tag tag-active">
@@ -627,6 +643,11 @@
                     @if($user->label_status_kepegawaian !== '-')
                         <span class="tag tag-role" style="background:var(--accent-muted)">
                             {{ $user->label_status_kepegawaian }}
+                        </span>
+                    @endif
+                    @if($user->jabatan)
+                        <span class="tag" style="background:var(--bg-2);color:var(--text-2);border-color:var(--border-2);">
+                            {{ $user->jabatan }}
                         </span>
                     @endif
                 </div>
@@ -671,40 +692,135 @@
             <span class="pcard-desc">Dikelola oleh admin</span>
         </div>
         <div class="pcard-body">
+            @php
+                $roleLabel = match($user->role) {
+                    'admin'          => 'Admin',
+                    'guru'           => 'Guru',
+                    'bendahara'      => 'Bendahara',
+                    'kepala_sekolah' => 'Kepala Sekolah',
+                    default          => ucwords(str_replace('_', ' ', $user->role)),
+                };
+            @endphp
             <div class="info-grid">
+
+                {{-- Selalu tampil --}}
                 <div class="info-item">
                     <span class="info-key">Username</span>
                     <span class="info-val mono">{{ $user->username }}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-key">Role</span>
-                    <span class="info-val">{{ ucwords(str_replace('_', ' ', $user->role)) }}</span>
+                    <span class="info-val">
+                        <span class="tag tag-role" style="font-size:var(--fs-2xs);padding:2px 9px;">
+                            {{ $roleLabel }}
+                        </span>
+                    </span>
                 </div>
+
+                @if($user->nik)
+                <div class="info-item">
+                    <span class="info-key">NIK</span>
+                    <span class="info-val mono">{{ $user->nik }}</span>
+                </div>
+                @endif
+
                 @if($user->nip)
                 <div class="info-item">
                     <span class="info-key">NIP</span>
                     <span class="info-val mono">{{ $user->nip }}</span>
                 </div>
                 @endif
+
                 @if($user->nuptk)
                 <div class="info-item">
                     <span class="info-key">NUPTK</span>
                     <span class="info-val mono">{{ $user->nuptk }}</span>
                 </div>
                 @endif
-                @if($user->tanggal_bergabung)
-                <div class="info-item">
-                    <span class="info-key">Bergabung</span>
-                    <span class="info-val">{{ $user->tanggal_bergabung->format('d M Y') }}</span>
-                </div>
-                @endif
+
                 @if($user->jabatan)
                 <div class="info-item">
                     <span class="info-key">Jabatan</span>
                     <span class="info-val">{{ $user->jabatan }}</span>
                 </div>
                 @endif
+
+                @if($user->status_kepegawaian)
+                <div class="info-item">
+                    <span class="info-key">Status Kepegawaian</span>
+                    <span class="info-val">{{ $user->label_status_kepegawaian }}</span>
+                </div>
+                @endif
+
+                @if($user->pendidikan_terakhir)
+                <div class="info-item">
+                    <span class="info-key">Pendidikan Terakhir</span>
+                    <span class="info-val">
+                        {{ strtoupper($user->pendidikan_terakhir) }}
+                        @if($user->jurusan)
+                            <span style="color:var(--text-3);font-weight:400"> — {{ $user->jurusan }}</span>
+                        @endif
+                    </span>
+                </div>
+                @endif
+
+                @if($user->jenis_kelamin)
+                <div class="info-item">
+                    <span class="info-key">Jenis Kelamin</span>
+                    <span class="info-val">
+                        {{ $user->jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan' }}
+                    </span>
+                </div>
+                @endif
+
+                @if($user->tanggal_lahir)
+                <div class="info-item">
+                    <span class="info-key">Tempat / Tgl Lahir</span>
+                    <span class="info-val">
+                        @if($user->tempat_lahir){{ $user->tempat_lahir }}, @endif
+                        {{ $user->tanggal_lahir->translatedFormat('d F Y') }}
+                        <span style="color:var(--text-3);font-weight:400">({{ $user->umur }} tahun)</span>
+                    </span>
+                </div>
+                @endif
+
+                @if($user->agama)
+                <div class="info-item">
+                    <span class="info-key">Agama</span>
+                    <span class="info-val">{{ ucfirst($user->agama) }}</span>
+                </div>
+                @endif
+
+                @if($user->tanggal_bergabung)
+                <div class="info-item">
+                    <span class="info-key">Bergabung Sejak</span>
+                    <span class="info-val">{{ $user->tanggal_bergabung->translatedFormat('d F Y') }}</span>
+                </div>
+                @endif
+
+                <div class="info-item">
+                    <span class="info-key">Status Akun</span>
+                    <span class="info-val">
+                        @if($user->aktif)
+                            <span class="tag tag-active" style="font-size:var(--fs-2xs);padding:2px 9px;">
+                                <span class="tag-dot"></span>Aktif
+                            </span>
+                        @else
+                            <span class="tag" style="font-size:var(--fs-2xs);padding:2px 9px;background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border);">
+                                Nonaktif
+                            </span>
+                        @endif
+                    </span>
+                </div>
+
             </div>
+
+            @if($user->alamat)
+            <div class="info-item" style="margin-top:10px;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);">
+                <span class="info-key" style="display:block;margin-bottom:4px;">Alamat</span>
+                <span class="info-val" style="font-size:var(--fs-sm);line-height:1.5;font-weight:400;color:var(--text-2);">{{ $user->alamat }}</span>
+            </div>
+            @endif
         </div>
     </div>
 
