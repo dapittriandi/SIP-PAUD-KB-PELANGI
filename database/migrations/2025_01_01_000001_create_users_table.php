@@ -25,7 +25,7 @@ return new class extends Migration
         $table->text('alamat')->nullable()->after('tanggal_lahir');
         $table->string('no_hp', 20)->nullable()->after('alamat');
         $table->string('foto', 255)->nullable()->after('no_hp');
-        $table->enum('status_kepegawaian', ['pns', 'pppk', 'honorer', 'gtty'])->nullable()->after('foto');
+        $table->enum('status_kepegawaian', ['pns', 'pppk', 'honorer', 'gtty', 'GTY/PTY'])->nullable()->after('foto');
         $table->string('jabatan', 100)->nullable()->after('status_kepegawaian');
         $table->string('pendidikan_terakhir', 10)->nullable()->after('jabatan');
         $table->string('jurusan', 100)->nullable()->after('pendidikan_terakhir');

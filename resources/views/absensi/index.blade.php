@@ -791,7 +791,7 @@
                         <span style="width:6px;height:6px;border-radius:50%;background:var(--warning);display:inline-block;flex-shrink:0;"></span>
                          Tetap hadir (status terlambat)
                     </span>
-                    <span class="g-mono font-bold" style="color:var(--warning);">{{ $cfgJamMasuk }} – {{ $cfgJamToleran }} WIB</span>
+                    <span class="g-mono font-bold" style="color:var(--warning);">{{ $cfgJamToleran }} – {{ $cfgCutoff }} WIB</span>
                 </div>
                
                 <div class="jam-info-row cutoff">
