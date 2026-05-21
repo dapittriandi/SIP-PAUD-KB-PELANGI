@@ -15,6 +15,7 @@ class AdminSeeder extends Seeder
             'name'               => 'Bella Kurnia Sari',
             'email'              => null,
             'username'           => 'bella',
+            'pin'      => Hash::make('2345'), // ← tambahkan pin
             'password'           => Hash::make('bella123'),
             'role'               => 'admin',
             'aktif'              => true,
@@ -40,6 +41,7 @@ class AdminSeeder extends Seeder
             'name'               => 'Renti Putriyani',
             'email'              => null,
             'username'           => 'kepsek',
+            'pin'      => Hash::make('5678'),
             'password'           => Hash::make('renti123'),
             'role'               => 'kepala_sekolah',
             'aktif'              => true,
@@ -70,6 +72,8 @@ class AdminSeeder extends Seeder
             'aktif'              => true,
             'nama_lengkap'       => 'NURIAH',
             'is_guru'  => true, 
+            'pin'      => Hash::make('4567'), // ← tambahkan pin
+
             'nik'                => '1506085002820000',
             'nip'                => null,
             'nuptk'              => null,
