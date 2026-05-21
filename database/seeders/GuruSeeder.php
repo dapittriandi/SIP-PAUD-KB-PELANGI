@@ -13,7 +13,7 @@ class GuruSeeder extends Seeder
         $gurus = [
             [
                 'username'            => 'bella',
-                // 'pin'                 => '2345',
+                'pin'                 => '2345',
                 'nama_lengkap'        => 'BELLA KURNIA SARI',
                 'nik'                 => '1506084412000000',
                 'nuptk'               => null,
@@ -47,7 +47,7 @@ class GuruSeeder extends Seeder
             ],
             [
                 'username'            => 'nuriah',
-                // 'pin'                 => '4567',
+                'pin'                 => '4567',
                 'nama_lengkap'        => 'NURIAH',
                 'nik'                 => '1506085002820000',
                 'nuptk'               => null,
@@ -64,7 +64,7 @@ class GuruSeeder extends Seeder
             ],
             [
                 'username'            => 'renti',
-                // 'pin'                 => '5678',
+                'pin'                 => '5678',
                 'nama_lengkap'        => 'RENTI PUTRIYANI',
                 'nik'                 => '1571076904960060',
                 'nuptk'               => null,
