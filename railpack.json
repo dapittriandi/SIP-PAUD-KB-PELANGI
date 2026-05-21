@@ -2,7 +2,12 @@
   "phases": {
     "extensions": {
       "cmds": [
-        "install-php-extensions gd zip ctype curl dom fileinfo filter hash mbstring openssl pcre pdo pdo_mysql session tokenizer xml"
+        "install-php-extensions gd zip ctype curl dom fileinfo filter hash mbstring openssl pcre pdo pdo_mysql session tokenizer xml intl bcmath exif"
+      ]
+    },
+    "install:composer": {
+      "cmds": [
+        "composer install --optimize-autoloader --no-scripts --no-interaction --ignore-platform-reqs"
       ]
     }
   }
